@@ -1,0 +1,8 @@
+{
+  "name": "ai-art-studio",
+  "version": "1.0.0",
+  "description": "AI image generation app",
+  "engines": {
+    "node": ">=18.x"
+  }
+}
