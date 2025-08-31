@@ -1,29 +1,65 @@
-// /api/generate.js
-import axios from "axios";
-
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const prompt = req.body.prompt;
+  
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
 
   try {
-    const response = await axios.post(
-      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2",
-      { inputs: prompt },
+    const response = await fetch(
+      "https://router.huggingface.co/nebius/v1/images/generations",
       {
         headers: {
           Authorization: `Bearer ${process.env.HF_API_KEY}`,
+          "Content-Type": "application/json",
         },
-        responseType: "arraybuffer", // get raw image bytes
+        method: "POST",
+        body: JSON.stringify({
+          response_format: "b64_json",
+          prompt: prompt,
+          model: "stability-ai/sdxl",
+        }),
       }
     );
 
-    const base64Image = Buffer.from(response.data, "binary").toString("base64");
-    res.status(200).json({ image: `data:image/png;base64,${base64Image}` });
+    if (!response.ok) {
+      throw new Error(`Hugging Face API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.b64_json) {
+      throw new Error('No image data received from API');
+    }
+
+    res.status(200).json({ image: `data:image/png;base64,${data.b64_json}` });
   } catch (error) {
-    console.error("Error generating image:", error.response?.data || error.message);
-    res.status(500).json({ error: "Image generation failed" });
+    console.error('API error:', error.message);
+    res.status(500).json({ 
+      error: 'Image generation failed',
+      details: error.message 
+    });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
