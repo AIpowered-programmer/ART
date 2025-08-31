@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Art Studio</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #f0f4ff, #e0f7fa);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      padding: 3rem 1rem;
+      flex: 1;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      color: #4a4a4a;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #777;
+      margin-bottom: 2rem;
+    }
+
+    .input-group {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: nowrap;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+
+    .suggestion-wrapper {
+      position: relative;
+      width: 300px;
+    }
+
+    #prompt {
+      width: 100%;
+      height: 48px;
+      padding: 0 1rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      background-color: white;
+      position: relative;
+      z-index: 2;
+    }
+
+    .suggestion-text {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      color: #aaa;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    button {
+      height: 48px;
+      padding: 0 1.2rem;
+      font-size: 1rem;
+      background-color: #0077ff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      margin-top: 0;
+      flex-shrink: 0;
+    }
+
+    button:hover {
+      background-color: #005fcc;
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .loader {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 2rem;
+    }
+
+    .loader .dot {
+      width: 12px;
+      height: 12px;
+      margin: 6px;
+      border-radius: 50%;
+      background-color: #0077ff;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    .loader .dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .loader .dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    .loader p {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: #555;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+    }
+
+    .image-wrapper {
+      margin-top: 2rem;
+    }
+
+    #result {
+      display: none;
+      max-width: 90%;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+      color: #666;
+      background-color: #f8f8f8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✨ AI Art Studio</h1>
+    <p class="subtitle">Describe your dream. Let the machine paint it.</p>
+
+    <div class="input-group">
+      <div class="suggestion-wrapper">
+        <input type="text" id="prompt" placeholder="" autocomplete="off" />
+        <div id="suggestion" class="suggestion-text"></div>
+      </div>
+      <button id="generateBtn">🎨 Generate</button>
+    </div>
+
+    <div id="loading" class="loader">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <p>Creating your masterpiece...</p>
+    </div>
+
+    <div class="image-wrapper">
+      <img id="result" alt="Generated AI Art" />
+    </div>
+  </div>
+
+  <footer>
+    Made with ❤️ by Ananan · Powered by Hugging Face
+  </footer>
+
+  <script>
+    const suggestions = [
+      "A futuristic city at sunset",
+      "A dragon made of clouds",
+      "Cyberpunk Tokyo street",
+      "A cat astronaut floating in space",
+      "Underwater castle glowing with jellyfish",
+      "A surreal dreamscape of melting clocks",
+      "A robot painting a self-portrait",
+      "A forest made of glass",
+      "A neon jungle with glowing animals",
+      "A steampunk airship battle",
+      "A magical library in the sky",
+      "A pixelated desert with floating pyramids",
+      "A cosmic whale swimming through stars",
+      "A haunted carnival at midnight",
+      "A watercolor galaxy explosion",
+      "A retro diner on Mars",
+      "A butterfly made of fire",
+      "A portal opening in a quiet meadow",
+      "A mountain shaped like a sleeping giant",
+      "A futuristic train flying over oceans"
+    ];
+
+    let suggestionIndex = 0;
+    let suggestionInterval;
+
+    const promptInput = document.getElementById('prompt');
+    const suggestionText = document.getElementById('suggestion');
+    const generateBtn = document.getElementById('generateBtn');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+
+    function showNextSuggestion() {
+      suggestionText.style.opacity = 0;
+      setTimeout(() => {
+        suggestionText.textContent = suggestions[suggestionIndex];
+        suggestionText.style.opacity = 1;
+        suggestionIndex = (suggestionIndex + 1) % suggestions.length;
+      }, 500);
+    }
+
+    function startSuggestionLoop() {
+      suggestionInterval = setInterval(showNextSuggestion, 3000);
+      showNextSuggestion();
+    }
+
+    function stopSuggestionLoop() {
+      clearInterval(suggestionInterval);
+      suggestionText.style.opacity = 0;
+    }
+
+    startSuggestionLoop();
+
+    promptInput.addEventListener('input', () => {
+      if (promptInput.value.trim().length > 0) {
+        stopSuggestionLoop();
+      } else {
+        startSuggestionLoop();
+      }
+    });
+
+    generateBtn.addEventListener('click', async () => {
+      const prompt = promptInput.value.trim();
+      if (!prompt) {
+        alert('Please enter a prompt!');
+        return;
+      }
+
+      result.style.display = 'none';
+      result.style.opacity = 0;
+      loading.style.display = 'flex';
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+
+        const data = await res.json();
+        result.src = data.image;
+
+        result.onload = () => {
+          loading.style.display = 'none';
+          result.style.display = 'block';
+          setTimeout(() => {
+            result.style.opacity = 1;
+          }, 100);
+        };
+      } catch (err) {
+        loading.style.display = 'none';
+        alert('Something went wrong. Try again!');
+      }
+    });
+  </script>
+</body>
+</html>
