@@ -192,101 +192,108 @@
     Made with ❤️ by Ananan · Powered by Hugging Face
   </footer>
 
-  <script>
-    const suggestions = [
-      "A futuristic city at sunset",
-      "A dragon made of clouds",
-      "Cyberpunk Tokyo street",
-      "A cat astronaut floating in space",
-      "Underwater castle glowing with jellyfish",
-      "A surreal dreamscape of melting clocks",
-      "A robot painting a self-portrait",
-      "A forest made of glass",
-      "A neon jungle with glowing animals",
-      "A steampunk airship battle",
-      "A magical library in the sky",
-      "A pixelated desert with floating pyramids",
-      "A cosmic whale swimming through stars",
-      "A haunted carnival at midnight",
-      "A watercolor galaxy explosion",
-      "A retro diner on Mars",
-      "A butterfly made of fire",
-      "A portal opening in a quiet meadow",
-      "A mountain shaped like a sleeping giant",
-      "A futuristic train flying over oceans"
-    ];
+<script>
+  const suggestions = [
+    "A futuristic city at sunset",
+    "A dragon made of clouds",
+    "Cyberpunk Tokyo street",
+    "A cat astronaut floating in space",
+    "Underwater castle glowing with jellyfish",
+    "A surreal dreamscape of melting clocks",
+    "A robot painting a self-portrait",
+    "A forest made of glass",
+    "A neon jungle with glowing animals",
+    "A steampunk airship battle",
+    "A magical library in the sky",
+    "A pixelated desert with floating pyramids",
+    "A cosmic whale swimming through stars",
+    "A haunted carnival at midnight",
+    "A watercolor galaxy explosion",
+    "A retro diner on Mars",
+    "A butterfly made of fire",
+    "A portal opening in a quiet meadow",
+    "A mountain shaped like a sleeping giant",
+    "A futuristic train flying over oceans"
+  ];
 
-    let suggestionIndex = 0;
-    let suggestionInterval;
+  let suggestionIndex = 0;
+  let suggestionInterval;
 
-    const promptInput = document.getElementById('prompt');
-    const suggestionText = document.getElementById('suggestion');
-    const generateBtn = document.getElementById('generateBtn');
-    const loading = document.getElementById('loading');
-    const result = document.getElementById('result');
+  const promptInput = document.getElementById('prompt');
+  const suggestionText = document.getElementById('suggestion');
+  const generateBtn = document.getElementById('generateBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
 
-    function showNextSuggestion() {
-      suggestionText.style.opacity = 0;
-      setTimeout(() => {
-        suggestionText.textContent = suggestions[suggestionIndex];
-        suggestionText.style.opacity = 1;
-        suggestionIndex = (suggestionIndex + 1) % suggestions.length;
-      }, 500);
+  function showNextSuggestion() {
+    suggestionText.style.opacity = 0;
+    setTimeout(() => {
+      suggestionText.textContent = suggestions[suggestionIndex];
+      suggestionText.style.opacity = 1;
+      suggestionIndex = (suggestionIndex + 1) % suggestions.length;
+    }, 500);
+  }
+
+  function startSuggestionLoop() {
+    suggestionInterval = setInterval(showNextSuggestion, 3000);
+    showNextSuggestion();
+  }
+
+  function stopSuggestionLoop() {
+    clearInterval(suggestionInterval);
+    suggestionText.style.opacity = 0;
+  }
+
+  startSuggestionLoop();
+
+  promptInput.addEventListener('input', () => {
+    if (promptInput.value.trim().length > 0) {
+      stopSuggestionLoop();
+    } else {
+      startSuggestionLoop();
+    }
+  });
+
+  generateBtn.addEventListener('click', async () => {
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+      alert('Please enter a prompt!');
+      return;
     }
 
-    function startSuggestionLoop() {
-      suggestionInterval = setInterval(showNextSuggestion, 3000);
-      showNextSuggestion();
-    }
+    result.style.display = 'none';
+    result.style.opacity = 0;
+    loading.style.display = 'flex';
 
-    function stopSuggestionLoop() {
-      clearInterval(suggestionInterval);
-      suggestionText.style.opacity = 0;
-    }
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
 
-    startSuggestionLoop();
+      const data = await res.json();
 
-    promptInput.addEventListener('input', () => {
-      if (promptInput.value.trim().length > 0) {
-        stopSuggestionLoop();
-      } else {
-        startSuggestionLoop();
+      if (!res.ok) {
+        // Show actual error from backend
+        throw new Error(data.error || "Unknown error occurred");
       }
-    });
 
-    generateBtn.addEventListener('click', async () => {
-      const prompt = promptInput.value.trim();
-      if (!prompt) {
-        alert('Please enter a prompt!');
-        return;
-      }
-
-      result.style.display = 'none';
-      result.style.opacity = 0;
-      loading.style.display = 'flex';
-
-      try {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt })
-        });
-
-        const data = await res.json();
-        result.src = data.image;
-
-        result.onload = () => {
-          loading.style.display = 'none';
-          result.style.display = 'block';
-          setTimeout(() => {
-            result.style.opacity = 1;
-          }, 100);
-        };
-      } catch (err) {
+      result.src = data.image;
+      result.onload = () => {
         loading.style.display = 'none';
-        alert('Something went wrong. Try again!');
-      }
-    });
-  </script>
+        result.style.display = 'block';
+        setTimeout(() => {
+          result.style.opacity = 1;
+        }, 100);
+      };
+    } catch (err) {
+      loading.style.display = 'none';
+      alert('Error: ' + err.message);
+    }
+  });
+</script>
+
 </body>
 </html>
+
