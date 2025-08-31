@@ -254,44 +254,52 @@
     }
   });
 
-  generateBtn.addEventListener('click', async () => {
-    const prompt = promptInput.value.trim();
-    if (!prompt) {
-      alert('Please enter a prompt!');
-      return;
+generateBtn.addEventListener('click', async () => {
+  const prompt = promptInput.value.trim();
+  if (!prompt) {
+    alert('Please enter a prompt!');
+    return;
+  }
+
+  result.style.display = 'none';
+  result.style.opacity = 0;
+  loading.style.display = 'flex';
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    let data;
+    const contentType = res.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      throw new Error(text || "Non-JSON error from server");
     }
 
-    result.style.display = 'none';
-    result.style.opacity = 0;
-    loading.style.display = 'flex';
+    if (!res.ok) {
+      throw new Error(data.error || "Unknown error occurred");
+    }
 
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        // Show actual error from backend
-        throw new Error(data.error || "Unknown error occurred");
-      }
-
-      result.src = data.image;
-      result.onload = () => {
-        loading.style.display = 'none';
-        result.style.display = 'block';
-        setTimeout(() => {
-          result.style.opacity = 1;
-        }, 100);
-      };
-    } catch (err) {
+    result.src = data.image;
+    result.onload = () => {
       loading.style.display = 'none';
-      alert('Error: ' + err.message);
-    }
-  });
+      result.style.display = 'block';
+      setTimeout(() => {
+        result.style.opacity = 1;
+      }, 100);
+    };
+  } catch (err) {
+    loading.style.display = 'none';
+    alert('Error: ' + err.message);
+  }
+});
+
 </script>
 
 </body>
